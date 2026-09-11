@@ -1,5 +1,6 @@
+import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "@prisma/client";
-import { isDevelopment } from "./env";
+import { env, isDevelopment } from "./env";
 import { logger } from "@/utils/logger";
 
 declare global {
@@ -7,9 +8,16 @@ declare global {
   var __prisma: PrismaClient | undefined;
 }
 
+// Uses the mariadb driver adapter (JS-native, no Rust query engine binary) instead of the
+// default library engine — the Rust engine's embedded tokio runtime panics with "PANIC: timer
+// has gone away" on some CPU-throttled shared-hosting environments once its process is
+// paused/resumed by the host's process manager.
+const adapter = new PrismaMariaDb(env.DATABASE_URL);
+
 export const prisma =
   global.__prisma ??
   new PrismaClient({
+    adapter,
     log: isDevelopment ? ["warn", "error"] : ["error"],
   });
 

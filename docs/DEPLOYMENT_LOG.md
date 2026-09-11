@@ -103,13 +103,94 @@ genuinely test-only packages (`vitest`, `supertest`, `@types/supertest`, plus `t
 dev hot-reload only) in `devDependencies`. Verified locally: clean `tsc --noEmit`, clean
 `npm run build:api`, all 38 Vitest tests still pass. Committed and pushed to the source repo.
 
-## Open question — getting the fix into the deploy repo
+## Keeping the deploy repo in sync
 
-`district-one-realty-deploy` (what Hostinger actually redeploys from) needs this same commit
-before clicking "Redeploy" will pick it up. Options to resolve, not yet executed:
-1. Push directly to `Kaifansari-17/district-one-realty-deploy` as a second git remote (simplest,
-   if the same cached GitHub credentials that pushed the source repo also have write access here).
-2. Check whether Hostinger's dashboard for this Web App has a "sync from source" or "change
-   repository" option that could point it back at the real source repo instead of its clone.
+`district-one-realty-deploy` (what Hostinger actually redeploys from) needs every fix pushed to
+it separately from the source repo — it does not track `Kaifansari-17/district-one-realty`
+automatically. Resolved approach: add it as a second local git remote (`deploy`) and, each time,
+rebuild a temporary branch off the latest `deploy/main`, merge the source repo's `main` into it
+(`--allow-unrelated-histories` only needed the very first time — after that first merge the
+histories are related and it's a normal merge), then push that branch to `deploy`'s `main` as an
+ordinary fast-forward push. No force-push is ever needed with this approach. In short, repeatable
+form:
 
-**Next step when resuming**: try option 1 first.
+```bash
+git remote add deploy https://github.com/Kaifansari-17/district-one-realty-deploy.git   # once
+git fetch deploy
+git branch -f deploy-sync deploy/main
+git switch deploy-sync
+git merge main -m "Sync source repo into Hostinger deploy repo"   # resolve any conflicts in favor of main's content
+git push deploy deploy-sync:main
+git switch main
+git branch -d deploy-sync
+```
+
+## Deploy #2 — failed: `npm run build` only builds `apps/api` in the dropdown's eyes, but the Build command dropdown only offers scripts literally named `build`
+
+Tried switching Build command to a custom `build:api:deploy` script (added to build only
+`shared-types`, `shared-utils`, `apps/api` — skipping the two frontends, whose devDependencies
+had the same problem). **The dropdown only ever lists `None` and `npm run build`** — it doesn't
+surface other script names at all, custom or otherwise. Reverted that approach.
+
+**Actual fix**: applied the same devDependencies-to-dependencies move to `apps/public-web` and
+`apps/admin-web` (moved `vite`, `@vitejs/plugin-react`, `@tailwindcss/vite`, `tailwindcss`,
+`typescript`, `@types/node`, `@types/react`, `@types/react-dom` into `dependencies`; left only
+`oxlint`, lint-only, in `devDependencies`). Verified a full clean `npm run build` succeeds for
+all five workspaces. This means the API's Web App build now also builds both frontends every
+time (wasted time, but unavoidable given the dropdown constraint) — harmless since it doesn't
+affect what actually gets deployed (`Output directory`/`Entry file` still point at `apps/api/dist`
+only).
+
+## Deploy #3 — build succeeded, but the app crashed on boot: `Cannot find module '@/app'`
+
+Build completed, but `~/domains/api.districtonerealty.com/hbuilds/versions/<id>/nodejs/stderr.log`
+showed the app crash-looping with `Error: Cannot find module '@/app'` (a TS path alias configured
+in `apps/api/tsconfig.json`'s `paths: { "@/*": ["./src/*"] }`). Plain `tsc` does **not** rewrite
+`@/*`-style imports into real relative paths in the compiled JS — it only worked locally because
+`tsx` (used for local dev) resolves them itself at runtime; `node dist/server.js` run directly, as
+Hostinger does, has no such resolution.
+
+**Fix**: added `tsc-alias` as a dependency and changed `apps/api`'s `build` script to
+`tsc -p tsconfig.json && tsc-alias -p tsconfig.json`. Verified `dist/server.js` has no bare `@/`
+requires left and boots + connects to MySQL locally.
+
+## Deploy #4 — app booted, but the Prisma query engine crash-looped: `PANIC: timer has gone away`
+
+The app itself booted and even served one request successfully, but
+`~/domains/api.districtonerealty.com/hbuilds/versions/<id>/nodejs/stderr.log` then showed a Rust
+panic (`thread 'tokio-runtime-worker' panicked ... futures-timer ... timer has gone away`) from
+Prisma's Rust query engine, and every subsequently-spawned worker process crashed on startup with
+the same panic. Confirmed via SSH that nothing was actually listening on `127.0.0.1:5000` at all
+once this started. This is a known class of Prisma issue (see e.g. prisma/prisma#26073 and
+similar) that shows up specifically on CPU-throttled/shared-hosting/serverless-style environments,
+where the host's process manager pauses and resumes the Node process (LiteSpeed's `lsnode`
+supervisor here) and the Rust engine's embedded tokio timer wheel doesn't survive that pause —
+not something fixable via retries or env tuning.
+
+**Fix**: switched from Prisma's default Rust query engine to the **driver adapters** feature
+(GA since Prisma 6.16, we're on 6.19.3 — no `previewFeatures` flag needed), using
+`@prisma/adapter-mariadb` (the officially-recommended adapter for both MariaDB and plain MySQL)
+pinned to `6.19.3` to match `@prisma/client`'s version exactly — the package's `latest` tag
+(`7.10.0`) targets Prisma 7 and is not API-compatible with our Prisma 6 client. This runs the
+`mariadb` npm package (a pure JS/native-binding driver, no separate Rust process/tokio runtime)
+instead of the bundled engine binary, which sidesteps the panic entirely.
+
+Note: `@prisma/adapter-mariadb@6.19.3` pins an exact vulnerable `mariadb@3.4.5` (GHSA-cqhc-2h57-wpxf,
+high severity — cleartext password leak to a MITM despite `ssl: true`). Forced the patched
+`mariadb@3.5.4` via a **nested** override in the root `package.json`:
+```json
+"overrides": { "@prisma/adapter-mariadb": { "mariadb": "^3.5.4" } }
+```
+A plain top-level `"mariadb": "^3.5.4"` override did **not** take effect here (`npm ls mariadb`
+kept showing `3.4.5` even after a full clean reinstall) — needed the nested form scoped to the
+specific parent package. `npm audit` now reports 0 vulnerabilities.
+
+`apps/api/src/config/prisma.ts` now constructs `new PrismaMariaDb(env.DATABASE_URL)` and passes
+it as `adapter` to the `PrismaClient` constructor. Verified locally: full clean rebuild, all 38
+Vitest tests pass, and a manually-booted `node dist/server.js` served both `/api/health` and a
+real DB-backed `/api/properties` query successfully.
+
+**Next step when resuming**: sync this fix into the deploy repo (see "Keeping the deploy repo in
+sync" above) and redeploy. If this clears, remaining Phase 10 work is: `prisma migrate deploy` +
+seed against production MySQL, static frontend uploads for `public_html`/admin subdomain, and SSL
+for all three subdomains.
