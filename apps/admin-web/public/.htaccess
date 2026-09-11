@@ -1,0 +1,34 @@
+# District One Realty — admin-web SPA routing (Apache/LiteSpeed, used by Hostinger).
+# React Router handles routes like /properties/:id/edit client-side; without this, requesting
+# that URL directly (or refreshing on it) hits Apache looking for a literal file/folder and 404s.
+# Rewrite every request that isn't a real file/directory back to index.html so the SPA's router
+# can take over.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Let real files (JS/CSS/images/etc.) and directories serve normally.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else falls back to the SPA shell.
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Long-cache hashed build assets (Vite fingerprints filenames, so a new deploy gets new
+# filenames — safe to cache aggressively); never cache index.html itself, or visitors can get
+# stuck on a stale build referencing assets that no longer exist.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "index\.html$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+</IfModule>

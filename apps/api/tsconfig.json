@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    // tsx/Node run this as CommonJS, so we can't move to "bundler" or "NodeNext" resolution
+    // without a bigger ESM migration. Silence the TS 6 deprecation notice for node10 resolution
+    // until that migration happens.
+    "ignoreDeprecations": "6.0",
+    "lib": ["ES2022"],
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "sourceMap": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  // Test files (and their vitest imports) have no place in the production server bundle —
+  // excluding them here is also what stops a stray compiled dist/test/*.test.js from being
+  // picked up by Vitest's own file discovery alongside the real src/test/*.test.ts sources
+  // (which is exactly what happened before this was added: every suite ran twice, once
+  // correctly via src, once failing via a CJS/ESM mismatch via the compiled dist copy).
+  "exclude": ["src/test"]
+}

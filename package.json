@@ -1,0 +1,31 @@
+{
+  "name": "district-one-realty",
+  "private": true,
+  "version": "1.0.0",
+  "description": "District One Realty - real estate discovery and management platform monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:public": "npm run dev --workspace=apps/public-web",
+    "dev:admin": "npm run dev --workspace=apps/admin-web",
+    "build": "npm run build --workspace=packages/shared-types && npm run build --workspace=packages/shared-utils && npm run build --workspace=apps/api && npm run build --workspace=apps/public-web && npm run build --workspace=apps/admin-web",
+    "build:api": "npm run build --workspace=apps/api",
+    "build:public": "npm run build --workspace=apps/public-web",
+    "build:admin": "npm run build --workspace=apps/admin-web",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "seed": "npm run seed --workspace=apps/api"
+  },
+  "engines": {
+    "node": ">=18.18 <23"
+  },
+  "overrides": {
+    "qs": "^6.16.0",
+    "deepmerge-ts": "^8.0.2",
+    "mysql2": "^3.24.4"
+  },
+  "license": "UNLICENSED"
+}

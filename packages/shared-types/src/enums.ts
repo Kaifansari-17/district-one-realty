@@ -1,0 +1,84 @@
+export enum UserRole {
+  SUPER_ADMIN = "SUPER_ADMIN",
+  ADMIN = "ADMIN",
+  AGENT = "AGENT",
+}
+
+export enum PublishStatus {
+  DRAFT = "DRAFT",
+  PUBLISHED = "PUBLISHED",
+  ARCHIVED = "ARCHIVED",
+}
+
+export enum PropertyStatus {
+  UNDER_CONSTRUCTION = "UNDER_CONSTRUCTION",
+  READY_TO_MOVE = "READY_TO_MOVE",
+  NEW_LAUNCH = "NEW_LAUNCH",
+  PRE_LAUNCH = "PRE_LAUNCH",
+  RESALE = "RESALE",
+}
+
+export enum PurposeSlug {
+  BUY = "buy",
+  RENT = "rent",
+  LEASE = "lease",
+}
+
+export enum FurnishingType {
+  UNFURNISHED = "UNFURNISHED",
+  SEMI_FURNISHED = "SEMI_FURNISHED",
+  FULLY_FURNISHED = "FULLY_FURNISHED",
+}
+
+export enum FacingDirection {
+  NORTH = "NORTH",
+  SOUTH = "SOUTH",
+  EAST = "EAST",
+  WEST = "WEST",
+  NORTH_EAST = "NORTH_EAST",
+  NORTH_WEST = "NORTH_WEST",
+  SOUTH_EAST = "SOUTH_EAST",
+  SOUTH_WEST = "SOUTH_WEST",
+}
+
+export enum LeadSource {
+  PROPERTY = "PROPERTY",
+  PROJECT = "PROJECT",
+  CONTACT = "CONTACT",
+  WEBSITE = "WEBSITE",
+  WHATSAPP = "WHATSAPP",
+  SITE_VISIT = "SITE_VISIT",
+}
+
+export enum LeadStatus {
+  NEW = "NEW",
+  CONTACTED = "CONTACTED",
+  FOLLOW_UP = "FOLLOW_UP",
+  SITE_VISIT_SCHEDULED = "SITE_VISIT_SCHEDULED",
+  NEGOTIATION = "NEGOTIATION",
+  CONVERTED = "CONVERTED",
+  CLOSED = "CLOSED",
+  NOT_INTERESTED = "NOT_INTERESTED",
+}
+
+export enum LeadPriority {
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+}
+
+export enum SiteVisitStatus {
+  REQUESTED = "REQUESTED",
+  CONFIRMED = "CONFIRMED",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
+  RESCHEDULED = "RESCHEDULED",
+}
+
+export enum MediaType {
+  IMAGE = "IMAGE",
+  VIDEO = "VIDEO",
+  DOCUMENT = "DOCUMENT",
+  FLOOR_PLAN = "FLOOR_PLAN",
+  BROCHURE = "BROCHURE",
+}

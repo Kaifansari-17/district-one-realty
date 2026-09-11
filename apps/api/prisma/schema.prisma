@@ -1,0 +1,669 @@
+// District One Realty — Prisma schema (MySQL)
+// Phase 2: relational schema, indexes, and seed data.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  AGENT
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PropertyStatus {
+  UNDER_CONSTRUCTION
+  READY_TO_MOVE
+  NEW_LAUNCH
+  PRE_LAUNCH
+  RESALE
+}
+
+enum PropertyTypeCategory {
+  RESIDENTIAL
+  COMMERCIAL
+}
+
+enum PriceUnit {
+  TOTAL
+  PER_SQFT
+}
+
+enum FurnishingType {
+  UNFURNISHED
+  SEMI_FURNISHED
+  FULLY_FURNISHED
+}
+
+enum FacingDirection {
+  NORTH
+  SOUTH
+  EAST
+  WEST
+  NORTH_EAST
+  NORTH_WEST
+  SOUTH_EAST
+  SOUTH_WEST
+}
+
+enum LeadSource {
+  PROPERTY
+  PROJECT
+  CONTACT
+  WEBSITE
+  WHATSAPP
+  SITE_VISIT
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  FOLLOW_UP
+  SITE_VISIT_SCHEDULED
+  NEGOTIATION
+  CONVERTED
+  CLOSED
+  NOT_INTERESTED
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SiteVisitStatus {
+  REQUESTED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+enum MediaFileType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+// What a Media row is attached to. Media has no DB-level foreign key to its
+// owner (Prisma cannot express a true polymorphic relation in a relational
+// schema) — the (ownerType, ownerId) pair is resolved and cascade-deleted in
+// the service layer instead. This keeps gallery operations (reorder, set
+// primary, edit alt/caption, delete one image) simple row-level updates
+// instead of read-modify-write on a JSON array.
+enum MediaOwnerType {
+  BUILDER_LOGO
+  LOCATION_IMAGE
+  PROPERTY_IMAGE
+  PROPERTY_VIDEO
+  PROPERTY_FLOOR_PLAN
+  PROPERTY_DOCUMENT
+  PROJECT_GALLERY
+  PROJECT_BROCHURE
+  PROJECT_MASTER_PLAN
+  BLOG_FEATURED_IMAGE
+  USER_PHOTO
+}
+
+// ---------------------------------------------------------------------------
+// Location hierarchy: Country -> State -> City -> Location
+// ---------------------------------------------------------------------------
+
+model Country {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  states    State[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model State {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  countryId String
+  country   Country  @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  cities    City[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([countryId])
+}
+
+model City {
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  stateId   String
+  state     State      @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  locations Location[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([stateId])
+}
+
+model Location {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  cityId          String
+  city            City     @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  description     String?  @db.Text
+  pincode         String?
+  latitude        Float?
+  longitude       Float?
+  metaTitle       String?
+  metaDescription String?  @db.Text
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  properties Property[]
+  projects   Project[]
+
+  @@index([cityId])
+  @@index([isActive])
+}
+
+// ---------------------------------------------------------------------------
+// Builder
+// ---------------------------------------------------------------------------
+
+model Builder {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  description     String?  @db.Text
+  website         String?
+  email           String?
+  phone           String?
+  address         String?  @db.Text
+  establishedYear Int?
+  metaTitle       String?
+  metaDescription String?  @db.Text
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  projects   Project[]
+  properties Property[]
+
+  @@index([isActive])
+}
+
+// ---------------------------------------------------------------------------
+// Lookup tables: PropertyType, PropertyCategory, Purpose, Amenity, Feature
+// ---------------------------------------------------------------------------
+
+model PropertyType {
+  id         String               @id @default(cuid())
+  name       String
+  slug       String               @unique
+  category   PropertyTypeCategory
+  isActive   Boolean              @default(true)
+  properties Property[]
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+}
+
+model PropertyCategory {
+  id         String     @id @default(cuid())
+  name       String
+  slug       String     @unique
+  isActive   Boolean    @default(true)
+  properties Property[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model Purpose {
+  id         String     @id @default(cuid())
+  name       String
+  slug       String     @unique
+  isActive   Boolean    @default(true)
+  properties Property[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model Amenity {
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  icon        String?
+  description String?           @db.Text
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  properties  PropertyAmenity[]
+  projects    ProjectAmenity[]
+}
+
+model Feature {
+  id         String            @id @default(cuid())
+  name       String
+  slug       String            @unique
+  icon       String?
+  isActive   Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  properties PropertyFeature[]
+}
+
+// ---------------------------------------------------------------------------
+// Project
+// ---------------------------------------------------------------------------
+
+model Project {
+  id              String         @id @default(cuid())
+  name            String
+  slug            String         @unique
+  builderId       String
+  builder         Builder        @relation(fields: [builderId], references: [id], onDelete: Restrict)
+  locationId      String
+  location        Location       @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  status          PropertyStatus
+  description     String?        @db.Text
+  reraNumber      String?
+  launchDate      DateTime?
+  possessionDate  DateTime?
+  startingPrice   Decimal?       @db.Decimal(14, 2)
+  configurations  Json?
+  totalTowers     Int?
+  totalFloors     Int?
+  totalUnits      Int?
+  latitude        Float?
+  longitude       Float?
+  metaTitle       String?
+  metaDescription String?        @db.Text
+  isFeatured      Boolean        @default(false)
+  isPublished     Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  properties Property[]
+  amenities  ProjectAmenity[]
+  agents     ProjectAgent[]
+  leads      Lead[]
+  siteVisits SiteVisit[]
+
+  @@index([builderId])
+  @@index([locationId])
+  @@index([status])
+  @@index([isFeatured])
+  @@index([isPublished])
+  @@index([createdAt])
+  @@fulltext([name, description])
+}
+
+model ProjectAmenity {
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  amenityId String
+  amenity   Amenity @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, amenityId])
+  @@index([amenityId])
+}
+
+model ProjectAgent {
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agentId   String
+  agent     User    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, agentId])
+  @@index([agentId])
+}
+
+// ---------------------------------------------------------------------------
+// Property
+// ---------------------------------------------------------------------------
+
+model Property {
+  id               String           @id @default(cuid())
+  title            String
+  slug             String           @unique
+  projectId        String?
+  project          Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  builderId        String?
+  builder          Builder?         @relation(fields: [builderId], references: [id], onDelete: SetNull)
+  locationId       String
+  location         Location         @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  propertyTypeId   String
+  propertyType     PropertyType     @relation(fields: [propertyTypeId], references: [id], onDelete: Restrict)
+  categoryId       String
+  category         PropertyCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  purposeId        String
+  purpose          Purpose          @relation(fields: [purposeId], references: [id], onDelete: Restrict)
+  description      String?          @db.Text
+  price            Decimal          @db.Decimal(14, 2)
+  priceUnit        PriceUnit        @default(TOTAL)
+  carpetArea       Float?
+  builtUpArea      Float?
+  superBuiltUpArea Float?
+  bedrooms         Int?
+  bathrooms        Int?
+  balconies        Int?
+  floorNumber      Int?
+  totalFloors      Int?
+  parking          Int?
+  facing           FacingDirection?
+  furnishing       FurnishingType?
+  propertyAge      Int?
+  possessionDate   DateTime?
+  reraNumber       String?
+  status           PropertyStatus
+  publishStatus    PublishStatus    @default(DRAFT)
+  featured         Boolean          @default(false)
+  verified         Boolean          @default(false)
+  latitude         Float?
+  longitude        Float?
+  metaTitle        String?
+  metaDescription  String?          @db.Text
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  amenities  PropertyAmenity[]
+  features   PropertyFeature[]
+  agents     PropertyAgent[]
+  leads      Lead[]
+  siteVisits SiteVisit[]
+
+  @@index([projectId])
+  @@index([builderId])
+  @@index([locationId])
+  @@index([propertyTypeId])
+  @@index([categoryId])
+  @@index([purposeId])
+  @@index([price])
+  @@index([status])
+  @@index([publishStatus])
+  @@index([featured])
+  @@index([verified])
+  @@index([createdAt])
+  @@fulltext([title, description])
+}
+
+model PropertyAmenity {
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  amenityId  String
+  amenity    Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, amenityId])
+  @@index([amenityId])
+}
+
+model PropertyFeature {
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  featureId  String
+  feature    Feature  @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, featureId])
+  @@index([featureId])
+}
+
+model PropertyAgent {
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  agentId    String
+  agent      User     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, agentId])
+  @@index([agentId])
+}
+
+// ---------------------------------------------------------------------------
+// Users (Super Admin / Admin / Agent) — no customer accounts by design
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  phone        String?
+  passwordHash String
+  role         UserRole
+  designation  String?
+  bio          String?   @db.Text
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignedProperties  PropertyAgent[]
+  assignedProjects    ProjectAgent[]
+  leads               Lead[]
+  siteVisits          SiteVisit[]
+  leadNotes           LeadNote[]
+  blogs               Blog[]
+  activityLogs        ActivityLog[]
+  notifications       Notification[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@index([role])
+  @@index([isActive])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Leads & Site Visits
+// ---------------------------------------------------------------------------
+
+model Lead {
+  id         String       @id @default(cuid())
+  name       String
+  phone      String
+  email      String?
+  propertyId String?
+  property   Property?    @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  projectId  String?
+  project    Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  agentId    String?
+  agent      User?        @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  source     LeadSource
+  status     LeadStatus   @default(NEW)
+  priority   LeadPriority @default(MEDIUM)
+  message    String?      @db.Text
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  notes      LeadNote[]
+  siteVisits SiteVisit[]
+
+  @@index([propertyId])
+  @@index([projectId])
+  @@index([agentId])
+  @@index([status])
+  @@index([source])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model LeadNote {
+  id          String   @id @default(cuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  text        String   @db.Text
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+
+  @@index([leadId])
+}
+
+model SiteVisit {
+  id            String          @id @default(cuid())
+  name          String
+  phone         String
+  email         String?
+  propertyId    String?
+  property      Property?       @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  projectId     String?
+  project       Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  agentId       String?
+  agent         User?           @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  leadId        String?
+  lead          Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  preferredDate DateTime
+  preferredTime String
+  message       String?         @db.Text
+  status        SiteVisitStatus @default(REQUESTED)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([propertyId])
+  @@index([projectId])
+  @@index([agentId])
+  @@index([leadId])
+  @@index([status])
+  @@index([preferredDate])
+}
+
+// ---------------------------------------------------------------------------
+// Content: Blog, Contact messages
+// ---------------------------------------------------------------------------
+
+model Blog {
+  id              String    @id @default(cuid())
+  title           String
+  slug            String    @unique
+  excerpt         String?   @db.Text
+  content         String    @db.LongText
+  authorId        String
+  author          User      @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  isPublished     Boolean   @default(false)
+  publishedAt     DateTime?
+  metaTitle       String?
+  metaDescription String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([authorId])
+  @@index([isPublished])
+  @@index([publishedAt])
+  @@fulltext([title, content])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Platform: activity logs, notifications, settings
+// ---------------------------------------------------------------------------
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+// ---------------------------------------------------------------------------
+// Media — Cloudinary-backed assets for every gallery/logo/document in the
+// system. See MediaOwnerType above for why this isn't a Prisma relation.
+// ---------------------------------------------------------------------------
+
+model Media {
+  id        String         @id @default(cuid())
+  ownerType MediaOwnerType
+  ownerId   String
+  type      MediaFileType
+  url       String
+  publicId  String
+  alt       String?
+  caption   String?
+  isPrimary Boolean        @default(false)
+  order     Int            @default(0)
+  width     Int?
+  height    Int?
+  bytes     Int?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([ownerType, ownerId])
+  @@index([ownerType, ownerId, order])
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json?
+  updatedAt DateTime @updatedAt
+}
