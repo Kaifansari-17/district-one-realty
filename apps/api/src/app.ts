@@ -70,6 +70,17 @@ export function createApp() {
     }
   });
 
+  // Default every API response to uncacheable. Without this, responses carrying only an ETag
+  // (no Cache-Control) are left to each browser's own heuristic caching — which is exactly what
+  // caused admin edits to not show up on the public site without a hard reload (mobile browsers
+  // in particular cache such responses aggressively and have no easy hard-refresh gesture).
+  // Read-mostly endpoints (builders/locations/meta) opt back into caching via their own
+  // `cacheControl()` middleware further down the chain, which overrides this.
+  app.use("/api", (_req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
+
   app.use("/api", apiLimiter, apiRouter);
 
   app.use(notFoundHandler);
