@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useCrudResource } from "@/lib/useCrudResource";
-import { getErrorMessage } from "@/lib/getErrorMessage";
+import { getErrorMessage, getFieldErrors } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -55,10 +55,12 @@ export function BuildersPage() {
   const [isFormOpen, setFormOpen] = useState(false);
   const [deleting, setDeleting] = useState<Builder | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   function openCreate() {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setFieldErrors({});
     setFormOpen(true);
   }
 
@@ -74,11 +76,13 @@ export function BuildersPage() {
       description: builder.description ?? "",
       isActive: builder.isActive,
     });
+    setFieldErrors({});
     setFormOpen(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFieldErrors({});
     const payload = {
       name: form.name,
       website: form.website || undefined,
@@ -100,6 +104,8 @@ export function BuildersPage() {
       }
       setFormOpen(false);
     } catch (err) {
+      const errors = getFieldErrors(err);
+      if (errors) setFieldErrors(errors);
       toast.error(getErrorMessage(err));
     }
   }
@@ -165,26 +171,26 @@ export function BuildersPage() {
       <Modal isOpen={isFormOpen} onClose={() => setFormOpen(false)} title={editing ? "Edit Builder" : "Add Builder"} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Name" htmlFor="name" required>
+            <FormField label="Name" htmlFor="name" required error={fieldErrors.name}>
               <TextInput id="name" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
             </FormField>
-            <FormField label="Established Year" htmlFor="year">
+            <FormField label="Established Year" htmlFor="year" error={fieldErrors.establishedYear}>
               <TextInput id="year" type="number" value={form.establishedYear} onChange={(e) => setForm((f) => ({ ...f, establishedYear: e.target.value }))} />
             </FormField>
-            <FormField label="Website" htmlFor="website">
+            <FormField label="Website" htmlFor="website" error={fieldErrors.website}>
               <TextInput id="website" type="url" placeholder="https://" value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} />
             </FormField>
-            <FormField label="Email" htmlFor="email">
+            <FormField label="Email" htmlFor="email" error={fieldErrors.email}>
               <TextInput id="email" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
             </FormField>
-            <FormField label="Phone" htmlFor="phone">
+            <FormField label="Phone" htmlFor="phone" error={fieldErrors.phone}>
               <TextInput id="phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
             </FormField>
           </div>
-          <FormField label="Address" htmlFor="address">
+          <FormField label="Address" htmlFor="address" error={fieldErrors.address}>
             <TextInput id="address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
           </FormField>
-          <FormField label="Description" htmlFor="description">
+          <FormField label="Description" htmlFor="description" error={fieldErrors.description}>
             <TextArea id="description" rows={3} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           </FormField>
 

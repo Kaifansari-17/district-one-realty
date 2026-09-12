@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
+import { getErrorMessage, getFieldErrors } from "@/lib/getErrorMessage";
 
 interface InquiryFormProps {
   source: "PROPERTY" | "PROJECT" | "CONTACT" | "WEBSITE";
@@ -13,6 +14,7 @@ interface InquiryFormProps {
 export function InquiryForm({ source, propertyId, projectId, compact }: InquiryFormProps) {
   const [form, setForm] = useState({ name: "", phone: "", email: "", message: "", website: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
     mutationFn: async () =>
@@ -25,10 +27,12 @@ export function InquiryForm({ source, propertyId, projectId, compact }: InquiryF
         source,
       }),
     onSuccess: () => setSubmitted(true),
+    onError: (err) => setFieldErrors(getFieldErrors(err) ?? {}),
   });
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setFieldErrors({});
     mutation.mutate();
   }
 
@@ -58,38 +62,52 @@ export function InquiryForm({ source, propertyId, projectId, compact }: InquiryF
         autoComplete="off"
       />
 
-      <input
-        type="text"
-        required
-        placeholder="Your Name"
-        value={form.name}
-        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-        className={inputClass}
-      />
-      <input
-        type="tel"
-        required
-        placeholder="Phone Number"
-        value={form.phone}
-        onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-        className={inputClass}
-      />
-      <input
-        type="email"
-        placeholder="Email (optional)"
-        value={form.email}
-        onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-        className={inputClass}
-      />
-      <textarea
-        rows={compact ? 2 : 3}
-        placeholder="Message (optional)"
-        value={form.message}
-        onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-        className={inputClass}
-      />
+      <div>
+        <input
+          type="text"
+          required
+          placeholder="Your Name"
+          value={form.name}
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          className={`${inputClass} ${fieldErrors.name ? "border-red-500" : ""}`}
+        />
+        {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
+      </div>
+      <div>
+        <input
+          type="tel"
+          required
+          placeholder="Phone Number"
+          value={form.phone}
+          onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+          className={`${inputClass} ${fieldErrors.phone ? "border-red-500" : ""}`}
+        />
+        {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
+      </div>
+      <div>
+        <input
+          type="email"
+          placeholder="Email (optional)"
+          value={form.email}
+          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          className={`${inputClass} ${fieldErrors.email ? "border-red-500" : ""}`}
+        />
+        {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
+      </div>
+      <div>
+        <textarea
+          rows={compact ? 2 : 3}
+          placeholder="Message (optional)"
+          value={form.message}
+          onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
+          className={`${inputClass} ${fieldErrors.message ? "border-red-500" : ""}`}
+        />
+        {fieldErrors.message && <p className="mt-1 text-xs text-red-600">{fieldErrors.message}</p>}
+      </div>
 
-      {mutation.isError && <p className="text-sm text-red-600">Something went wrong. Please try again.</p>}
+      {mutation.isError && !Object.keys(fieldErrors).length && (
+        <p className="text-sm text-red-600">{getErrorMessage(mutation.error)}</p>
+      )}
 
       <button
         type="submit"

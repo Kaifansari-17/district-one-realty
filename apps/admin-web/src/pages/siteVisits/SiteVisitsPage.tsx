@@ -4,6 +4,7 @@ import { Eye } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useCrudResource } from "@/lib/useCrudResource";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Pagination } from "@/components/ui/Pagination";
@@ -65,7 +66,7 @@ export function SiteVisitsPage() {
       queryClient.invalidateQueries({ queryKey: ["site-visits"] });
       toast.success("Site visit updated");
     },
-    onError: () => toast.error("Failed to update"),
+    onError: (err) => toast.error(getErrorMessage(err, "Failed to update")),
   });
 
   const columns: Column<SiteVisit>[] = [

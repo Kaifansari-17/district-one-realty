@@ -4,7 +4,7 @@ import { Plus, Pencil, Power, KeyRound } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useCrudResource } from "@/lib/useCrudResource";
-import { getErrorMessage } from "@/lib/getErrorMessage";
+import { getErrorMessage, getFieldErrors } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -62,21 +62,25 @@ export function AgentsPage() {
   const [resettingId, setResettingId] = useState<string | null>(null);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   function openCreate() {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setFieldErrors({});
     setFormOpen(true);
   }
 
   function openEdit(agent: Agent) {
     setEditing(agent);
     setForm({ name: agent.name, email: agent.email, phone: agent.phone ?? "", designation: agent.designation ?? "", bio: agent.bio ?? "", role: agent.role as "AGENT" });
+    setFieldErrors({});
     setFormOpen(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFieldErrors({});
     try {
       if (editing) {
         await updateMutation.mutateAsync({
@@ -92,6 +96,8 @@ export function AgentsPage() {
         if (result.temporaryPassword) setGeneratedPassword(result.temporaryPassword);
       }
     } catch (err) {
+      const errors = getFieldErrors(err);
+      if (errors) setFieldErrors(errors);
       toast.error(getErrorMessage(err));
     }
   }
@@ -176,20 +182,20 @@ export function AgentsPage() {
       <Modal isOpen={isFormOpen} onClose={() => setFormOpen(false)} title={editing ? "Edit Account" : "Add Account"} size="md">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Name" htmlFor="name" required>
+            <FormField label="Name" htmlFor="name" required error={fieldErrors.name}>
               <TextInput id="name" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
             </FormField>
-            <FormField label="Email" htmlFor="email" required>
+            <FormField label="Email" htmlFor="email" required error={fieldErrors.email}>
               <TextInput id="email" type="email" required disabled={Boolean(editing)} value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
             </FormField>
-            <FormField label="Phone" htmlFor="phone">
+            <FormField label="Phone" htmlFor="phone" error={fieldErrors.phone}>
               <TextInput id="phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
             </FormField>
-            <FormField label="Designation" htmlFor="designation">
+            <FormField label="Designation" htmlFor="designation" error={fieldErrors.designation}>
               <TextInput id="designation" value={form.designation} onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))} />
             </FormField>
             {!editing && (
-              <FormField label="Role" htmlFor="role" required>
+              <FormField label="Role" htmlFor="role" required error={fieldErrors.role}>
                 <Select id="role" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as "AGENT" }))}>
                   <option value="AGENT">Agent</option>
                   <option value="ADMIN">Admin</option>
@@ -197,7 +203,7 @@ export function AgentsPage() {
               </FormField>
             )}
           </div>
-          <FormField label="Bio" htmlFor="bio">
+          <FormField label="Bio" htmlFor="bio" error={fieldErrors.bio}>
             <TextArea id="bio" rows={3} value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} />
           </FormField>
 

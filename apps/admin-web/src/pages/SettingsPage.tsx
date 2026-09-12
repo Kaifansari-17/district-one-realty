@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { isAxiosError } from "axios";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
+import { getErrorMessage, getFieldErrors } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { FormField, TextInput } from "@/components/ui/FormField";
 
@@ -12,7 +12,7 @@ export function SettingsPage() {
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const changePasswordMutation = useMutation({
     mutationFn: async () => apiClient.post("/auth/change-password", { currentPassword, newPassword }),
@@ -20,15 +20,18 @@ export function SettingsPage() {
       toast.success("Password changed successfully");
       setCurrentPassword("");
       setNewPassword("");
-      setError(null);
+      setFieldErrors({});
     },
     onError: (err) => {
-      setError(isAxiosError(err) ? err.response?.data?.message ?? "Failed to change password" : "Failed to change password");
+      const errors = getFieldErrors(err);
+      setFieldErrors(errors ?? {});
+      toast.error(getErrorMessage(err, "Failed to change password"));
     },
   });
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setFieldErrors({});
     changePasswordMutation.mutate();
   }
 
@@ -61,7 +64,7 @@ export function SettingsPage() {
       <div className="rounded-lg border border-border bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-text-primary">Change Password</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormField label="Current Password" htmlFor="currentPassword" required>
+          <FormField label="Current Password" htmlFor="currentPassword" required error={fieldErrors.currentPassword}>
             <TextInput
               id="currentPassword"
               type="password"
@@ -70,11 +73,15 @@ export function SettingsPage() {
               onChange={(e) => setCurrentPassword(e.target.value)}
             />
           </FormField>
-          <FormField label="New Password" htmlFor="newPassword" required hint="At least 8 characters, with upper/lowercase and a number.">
+          <FormField
+            label="New Password"
+            htmlFor="newPassword"
+            required
+            hint="At least 8 characters, with upper/lowercase and a number."
+            error={fieldErrors.newPassword}
+          >
             <TextInput id="newPassword" type="password" required minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
           </FormField>
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button
             type="submit"

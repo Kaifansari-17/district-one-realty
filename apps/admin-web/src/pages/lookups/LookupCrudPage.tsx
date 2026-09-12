@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useCrudResource } from "@/lib/useCrudResource";
-import { getErrorMessage } from "@/lib/getErrorMessage";
+import { getErrorMessage, getFieldErrors } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -46,21 +46,25 @@ export function LookupCrudPage({ title, singularLabel, basePath, resourceKey, fi
   const [deleting, setDeleting] = useState<LookupItem | null>(null);
 
   const [form, setForm] = useState({ name: "", icon: "", description: "", isActive: true });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   function openCreate() {
     setEditing(null);
     setForm({ name: "", icon: "", description: "", isActive: true });
+    setFieldErrors({});
     setFormOpen(true);
   }
 
   function openEdit(item: LookupItem) {
     setEditing(item);
     setForm({ name: item.name, icon: item.icon ?? "", description: item.description ?? "", isActive: item.isActive });
+    setFieldErrors({});
     setFormOpen(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFieldErrors({});
     const payload = {
       name: form.name,
       isActive: form.isActive,
@@ -78,6 +82,8 @@ export function LookupCrudPage({ title, singularLabel, basePath, resourceKey, fi
       }
       setFormOpen(false);
     } catch (err) {
+      const errors = getFieldErrors(err);
+      if (errors) setFieldErrors(errors);
       toast.error(getErrorMessage(err));
     }
   }
@@ -147,18 +153,18 @@ export function LookupCrudPage({ title, singularLabel, basePath, resourceKey, fi
 
       <Modal isOpen={isFormOpen} onClose={() => setFormOpen(false)} title={editing ? `Edit ${singularLabel}` : `Add ${singularLabel}`} size="sm">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormField label="Name" htmlFor="name" required>
+          <FormField label="Name" htmlFor="name" required error={fieldErrors.name}>
             <TextInput id="name" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
           </FormField>
 
           {fields.includes("icon") && (
-            <FormField label="Icon" htmlFor="icon" hint="Icon name or emoji shown in listings">
+            <FormField label="Icon" htmlFor="icon" hint="Icon name or emoji shown in listings" error={fieldErrors.icon}>
               <TextInput id="icon" value={form.icon} onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))} />
             </FormField>
           )}
 
           {fields.includes("description") && (
-            <FormField label="Description" htmlFor="description">
+            <FormField label="Description" htmlFor="description" error={fieldErrors.description}>
               <TextArea id="description" rows={3} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
             </FormField>
           )}

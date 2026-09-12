@@ -6,6 +6,26 @@ import { ApiError } from "@/utils/ApiError";
 import { logger } from "@/utils/logger";
 import { isProduction } from "@/config/env";
 
+/**
+ * `validate()` (see middlewares/validate.ts) always parses `{ body, params, query }` as one
+ * object, so every Zod issue's path starts with that wrapper segment — e.g. `["body",
+ * "startingPrice"]`. Zod's own `.flatten().fieldErrors` groups only by that FIRST segment,
+ * collapsing every body-field error into one `errors.body` array with no indication of which
+ * field it's actually about. This instead keys the map by the real field name (dropping the
+ * "body" wrapper, since that's the overwhelming majority of validated input; "query"/"params"
+ * are kept as a prefix to disambiguate the rarer case of a query/route-param validation error),
+ * so a frontend form can highlight the exact field that failed.
+ */
+function zodErrorToFieldErrors(err: ZodError): Record<string, string[]> {
+  const fieldErrors: Record<string, string[]> = {};
+  for (const issue of err.issues) {
+    const [wrapper, ...rest] = issue.path;
+    const field = wrapper === "body" ? rest.join(".") : issue.path.join(".");
+    (fieldErrors[field || "_"] ??= []).push(issue.message);
+  }
+  return fieldErrors;
+}
+
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   let statusCode = 500;
   let message = "Internal server error";
@@ -18,7 +38,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   } else if (err instanceof ZodError) {
     statusCode = 400;
     message = "Validation failed";
-    errors = err.flatten().fieldErrors as Record<string, string[]>;
+    errors = zodErrorToFieldErrors(err);
   } else if (err instanceof Prisma.PrismaClientKnownRequestError) {
     switch (err.code) {
       case "P2002": {

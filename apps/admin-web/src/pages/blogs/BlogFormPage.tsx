@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCrudResource } from "@/lib/useCrudResource";
-import { getErrorMessage } from "@/lib/getErrorMessage";
+import { getErrorMessage, getFieldErrors } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { FormField, TextInput, TextArea } from "@/components/ui/FormField";
 import { MediaManager } from "@/components/ui/MediaManager";
@@ -30,6 +30,7 @@ export function BlogFormPage() {
   const updateMutation = useUpdate();
 
   const [form, setForm] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (blog) {
@@ -46,6 +47,7 @@ export function BlogFormPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFieldErrors({});
     const payload = {
       title: form.title,
       excerpt: form.excerpt || undefined,
@@ -65,6 +67,8 @@ export function BlogFormPage() {
       }
       navigate("/blogs");
     } catch (err) {
+      const errors = getFieldErrors(err);
+      if (errors) setFieldErrors(errors);
       toast.error(getErrorMessage(err));
     }
   }
@@ -76,21 +80,21 @@ export function BlogFormPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-border bg-white p-6">
-        <FormField label="Title" htmlFor="title" required>
+        <FormField label="Title" htmlFor="title" required error={fieldErrors.title}>
           <TextInput id="title" required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
         </FormField>
-        <FormField label="Excerpt" htmlFor="excerpt" hint="Shown on the blog listing card.">
+        <FormField label="Excerpt" htmlFor="excerpt" hint="Shown on the blog listing card." error={fieldErrors.excerpt}>
           <TextArea id="excerpt" rows={2} value={form.excerpt} onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))} />
         </FormField>
-        <FormField label="Content" htmlFor="content" required hint="At least 20 characters.">
+        <FormField label="Content" htmlFor="content" required hint="At least 20 characters." error={fieldErrors.content}>
           <TextArea id="content" rows={14} required value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} />
         </FormField>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="SEO Title" htmlFor="metaTitle">
+          <FormField label="SEO Title" htmlFor="metaTitle" error={fieldErrors.metaTitle}>
             <TextInput id="metaTitle" value={form.metaTitle} onChange={(e) => setForm((f) => ({ ...f, metaTitle: e.target.value }))} />
           </FormField>
-          <FormField label="SEO Description" htmlFor="metaDescription">
+          <FormField label="SEO Description" htmlFor="metaDescription" error={fieldErrors.metaDescription}>
             <TextInput id="metaDescription" value={form.metaDescription} onChange={(e) => setForm((f) => ({ ...f, metaDescription: e.target.value }))} />
           </FormField>
         </div>

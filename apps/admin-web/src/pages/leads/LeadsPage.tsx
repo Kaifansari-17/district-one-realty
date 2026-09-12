@@ -4,6 +4,7 @@ import { Eye } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useCrudResource } from "@/lib/useCrudResource";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Pagination } from "@/components/ui/Pagination";
@@ -84,7 +85,7 @@ export function LeadsPage() {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       toast.success("Lead updated");
     },
-    onError: () => toast.error("Failed to update lead"),
+    onError: (err) => toast.error(getErrorMessage(err, "Failed to update lead")),
   });
 
   const noteMutation = useMutation({
@@ -93,7 +94,7 @@ export function LeadsPage() {
       queryClient.invalidateQueries({ queryKey: ["leads", "detail", selectedId] });
       setNoteText("");
     },
-    onError: () => toast.error("Failed to add note"),
+    onError: (err) => toast.error(getErrorMessage(err, "Failed to add note")),
   });
 
   const columns: Column<Lead>[] = [

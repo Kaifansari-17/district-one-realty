@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Star, Trash2, Upload, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import type { MediaAsset } from "@district-one/shared-types";
 import { apiClient } from "@/lib/api-client";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 
 interface MediaManagerProps {
@@ -36,7 +37,7 @@ export function MediaManager({ basePath, label = "Images", accept = "image/jpeg,
       invalidate();
       toast.success("Uploaded successfully");
     },
-    onError: () => toast.error("Upload failed"),
+    onError: (err) => toast.error(getErrorMessage(err, "Upload failed")),
   });
 
   const deleteMutation = useMutation({
@@ -52,20 +53,20 @@ export function MediaManager({ basePath, label = "Images", accept = "image/jpeg,
         invalidate();
         return;
       }
-      toast.error("Failed to remove");
+      toast.error(getErrorMessage(error, "Failed to remove"));
     },
   });
 
   const primaryMutation = useMutation({
     mutationFn: async (mediaId: string) => apiClient.patch(`${basePath}/${mediaId}/primary`),
     onSuccess: () => invalidate(),
-    onError: () => toast.error("Failed to update"),
+    onError: (err) => toast.error(getErrorMessage(err, "Failed to update")),
   });
 
   const reorderMutation = useMutation({
     mutationFn: async (orderedIds: string[]) => apiClient.patch(`${basePath}/reorder`, { orderedIds }),
     onSuccess: () => invalidate(),
-    onError: () => toast.error("Failed to reorder"),
+    onError: (err) => toast.error(getErrorMessage(err, "Failed to reorder")),
   });
 
   function handleFiles(files: FileList | null) {

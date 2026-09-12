@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Phone, Mail, MapPin, CheckCircle2 } from "lucide-react";
 import { buildTelLink, buildWhatsAppLink } from "@district-one/shared-utils";
 import { apiClient } from "@/lib/api-client";
+import { getErrorMessage, getFieldErrors } from "@/lib/getErrorMessage";
 import { useDocumentMeta } from "@/lib/useDocumentMeta";
 import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 import { WhatsAppButton } from "@/components/common/WhatsAppButton";
@@ -13,14 +14,17 @@ export function ContactPage() {
 
   const [form, setForm] = useState({ name: "", phone: "", email: "", message: "", website: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
     mutationFn: async () => apiClient.post("/contact", { ...form, email: form.email || undefined }),
     onSuccess: () => setSubmitted(true),
+    onError: (err) => setFieldErrors(getFieldErrors(err) ?? {}),
   });
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setFieldErrors({});
     mutation.mutate();
   }
 
@@ -94,12 +98,26 @@ export function ContactPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <input type="text" name="website" value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} className="hidden" tabIndex={-1} autoComplete="off" />
-              <input type="text" required placeholder="Your Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputClass} />
-              <input type="tel" required placeholder="Phone Number" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} className={inputClass} />
-              <input type="email" placeholder="Email (optional)" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputClass} />
-              <textarea rows={4} required placeholder="How can we help?" value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} className={inputClass} />
+              <div>
+                <input type="text" required placeholder="Your Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={`${inputClass} ${fieldErrors.name ? "border-red-500" : ""}`} />
+                {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
+              </div>
+              <div>
+                <input type="tel" required placeholder="Phone Number" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} className={`${inputClass} ${fieldErrors.phone ? "border-red-500" : ""}`} />
+                {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
+              </div>
+              <div>
+                <input type="email" placeholder="Email (optional)" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={`${inputClass} ${fieldErrors.email ? "border-red-500" : ""}`} />
+                {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
+              </div>
+              <div>
+                <textarea rows={4} required placeholder="How can we help?" value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} className={`${inputClass} ${fieldErrors.message ? "border-red-500" : ""}`} />
+                {fieldErrors.message && <p className="mt-1 text-xs text-red-600">{fieldErrors.message}</p>}
+              </div>
 
-              {mutation.isError && <p className="text-sm text-red-600">Something went wrong. Please try again.</p>}
+              {mutation.isError && !Object.keys(fieldErrors).length && (
+                <p className="text-sm text-red-600">{getErrorMessage(mutation.error)}</p>
+              )}
 
               <button type="submit" disabled={mutation.isPending} className="w-full rounded-md bg-navy py-3 text-sm font-medium text-white hover:bg-navy-secondary disabled:opacity-60">
                 {mutation.isPending ? "Sending..." : "Send Message"}

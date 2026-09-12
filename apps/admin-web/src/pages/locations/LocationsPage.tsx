@@ -4,7 +4,7 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useCrudResource } from "@/lib/useCrudResource";
-import { getErrorMessage } from "@/lib/getErrorMessage";
+import { getErrorMessage, getFieldErrors } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -57,10 +57,12 @@ export function LocationsPage() {
   const [isFormOpen, setFormOpen] = useState(false);
   const [deleting, setDeleting] = useState<Location | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   function openCreate() {
     setEditing(null);
     setForm({ ...EMPTY_FORM, cityId: cities[0]?.id ?? "" });
+    setFieldErrors({});
     setFormOpen(true);
   }
 
@@ -73,11 +75,13 @@ export function LocationsPage() {
       pincode: location.pincode ?? "",
       isActive: location.isActive,
     });
+    setFieldErrors({});
     setFormOpen(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFieldErrors({});
     const payload = {
       name: form.name,
       cityId: form.cityId,
@@ -96,6 +100,8 @@ export function LocationsPage() {
       }
       setFormOpen(false);
     } catch (err) {
+      const errors = getFieldErrors(err);
+      if (errors) setFieldErrors(errors);
       toast.error(getErrorMessage(err));
     }
   }
@@ -161,10 +167,10 @@ export function LocationsPage() {
       <Modal isOpen={isFormOpen} onClose={() => setFormOpen(false)} title={editing ? "Edit Location" : "Add Location"} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Name" htmlFor="name" required>
+            <FormField label="Name" htmlFor="name" required error={fieldErrors.name}>
               <TextInput id="name" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
             </FormField>
-            <FormField label="City" htmlFor="cityId" required>
+            <FormField label="City" htmlFor="cityId" required error={fieldErrors.cityId}>
               <Select id="cityId" required value={form.cityId} onChange={(e) => setForm((f) => ({ ...f, cityId: e.target.value }))}>
                 {cities.map((city) => (
                   <option key={city.id} value={city.id}>
@@ -173,11 +179,11 @@ export function LocationsPage() {
                 ))}
               </Select>
             </FormField>
-            <FormField label="Pincode" htmlFor="pincode">
+            <FormField label="Pincode" htmlFor="pincode" error={fieldErrors.pincode}>
               <TextInput id="pincode" value={form.pincode} onChange={(e) => setForm((f) => ({ ...f, pincode: e.target.value }))} />
             </FormField>
           </div>
-          <FormField label="Description" htmlFor="description">
+          <FormField label="Description" htmlFor="description" error={fieldErrors.description}>
             <TextArea id="description" rows={3} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           </FormField>
 

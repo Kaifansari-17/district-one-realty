@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useCrudResource } from "@/lib/useCrudResource";
-import { getErrorMessage } from "@/lib/getErrorMessage";
+import { getErrorMessage, getFieldErrors } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { FormField, TextInput, TextArea, Select } from "@/components/ui/FormField";
 import { MediaManager } from "@/components/ui/MediaManager";
@@ -97,6 +97,7 @@ export function ProjectFormPage() {
   });
 
   const [form, setForm] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!project) return;
@@ -140,6 +141,7 @@ export function ProjectFormPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFieldErrors({});
 
     const payload = {
       name: form.name,
@@ -174,6 +176,8 @@ export function ProjectFormPage() {
       }
       navigate("/projects");
     } catch (err) {
+      const errors = getFieldErrors(err);
+      if (errors) setFieldErrors(errors);
       toast.error(getErrorMessage(err, "Something went wrong. Please check the form and try again."));
     }
   }
@@ -185,11 +189,11 @@ export function ProjectFormPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <section className="space-y-4 rounded-lg border border-border bg-white p-6">
           <h2 className="text-sm font-semibold text-text-primary">Basic Information</h2>
-          <FormField label="Project Name" htmlFor="name" required>
+          <FormField label="Project Name" htmlFor="name" required error={fieldErrors.name}>
             <TextInput id="name" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
           </FormField>
           <div className="grid gap-4 sm:grid-cols-3">
-            <FormField label="Builder" htmlFor="builderId" required>
+            <FormField label="Builder" htmlFor="builderId" required error={fieldErrors.builderId}>
               <Select id="builderId" required value={form.builderId} onChange={(e) => setForm((f) => ({ ...f, builderId: e.target.value }))}>
                 <option value="">Select builder</option>
                 {builders.map((b) => (
@@ -197,7 +201,7 @@ export function ProjectFormPage() {
                 ))}
               </Select>
             </FormField>
-            <FormField label="Location" htmlFor="locationId" required>
+            <FormField label="Location" htmlFor="locationId" required error={fieldErrors.locationId}>
               <Select id="locationId" required value={form.locationId} onChange={(e) => setForm((f) => ({ ...f, locationId: e.target.value }))}>
                 <option value="">Select location</option>
                 {locations.map((l) => (
@@ -205,7 +209,7 @@ export function ProjectFormPage() {
                 ))}
               </Select>
             </FormField>
-            <FormField label="Status" htmlFor="status" required>
+            <FormField label="Status" htmlFor="status" required error={fieldErrors.status}>
               <Select id="status" required value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
@@ -213,7 +217,7 @@ export function ProjectFormPage() {
               </Select>
             </FormField>
           </div>
-          <FormField label="Description" htmlFor="description">
+          <FormField label="Description" htmlFor="description" error={fieldErrors.description}>
             <TextArea id="description" rows={4} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           </FormField>
         </section>
@@ -221,28 +225,28 @@ export function ProjectFormPage() {
         <section className="space-y-4 rounded-lg border border-border bg-white p-6">
           <h2 className="text-sm font-semibold text-text-primary">Pricing &amp; Configuration</h2>
           <div className="grid gap-4 sm:grid-cols-3">
-            <FormField label="Starting Price (₹)" htmlFor="startingPrice">
+            <FormField label="Starting Price (₹)" htmlFor="startingPrice" error={fieldErrors.startingPrice}>
               <TextInput id="startingPrice" type="number" value={form.startingPrice} onChange={(e) => setForm((f) => ({ ...f, startingPrice: e.target.value }))} />
             </FormField>
-            <FormField label="Configurations" htmlFor="configurations" hint="Comma-separated, e.g. 2 BHK, 3 BHK">
+            <FormField label="Configurations" htmlFor="configurations" hint="Comma-separated, e.g. 2 BHK, 3 BHK" error={fieldErrors.configurations}>
               <TextInput id="configurations" value={form.configurations} onChange={(e) => setForm((f) => ({ ...f, configurations: e.target.value }))} />
             </FormField>
-            <FormField label="RERA Number" htmlFor="reraNumber">
+            <FormField label="RERA Number" htmlFor="reraNumber" error={fieldErrors.reraNumber}>
               <TextInput id="reraNumber" value={form.reraNumber} onChange={(e) => setForm((f) => ({ ...f, reraNumber: e.target.value }))} />
             </FormField>
-            <FormField label="Total Towers" htmlFor="totalTowers">
+            <FormField label="Total Towers" htmlFor="totalTowers" error={fieldErrors.totalTowers}>
               <TextInput id="totalTowers" type="number" value={form.totalTowers} onChange={(e) => setForm((f) => ({ ...f, totalTowers: e.target.value }))} />
             </FormField>
-            <FormField label="Total Floors" htmlFor="totalFloors">
+            <FormField label="Total Floors" htmlFor="totalFloors" error={fieldErrors.totalFloors}>
               <TextInput id="totalFloors" type="number" value={form.totalFloors} onChange={(e) => setForm((f) => ({ ...f, totalFloors: e.target.value }))} />
             </FormField>
-            <FormField label="Total Units" htmlFor="totalUnits">
+            <FormField label="Total Units" htmlFor="totalUnits" error={fieldErrors.totalUnits}>
               <TextInput id="totalUnits" type="number" value={form.totalUnits} onChange={(e) => setForm((f) => ({ ...f, totalUnits: e.target.value }))} />
             </FormField>
-            <FormField label="Launch Date" htmlFor="launchDate">
+            <FormField label="Launch Date" htmlFor="launchDate" error={fieldErrors.launchDate}>
               <TextInput id="launchDate" type="date" value={form.launchDate} onChange={(e) => setForm((f) => ({ ...f, launchDate: e.target.value }))} />
             </FormField>
-            <FormField label="Possession Date" htmlFor="possessionDate">
+            <FormField label="Possession Date" htmlFor="possessionDate" error={fieldErrors.possessionDate}>
               <TextInput id="possessionDate" type="date" value={form.possessionDate} onChange={(e) => setForm((f) => ({ ...f, possessionDate: e.target.value }))} />
             </FormField>
           </div>
@@ -258,6 +262,7 @@ export function ProjectFormPage() {
               </label>
             ))}
           </div>
+          {fieldErrors.amenityIds && <p className="text-xs text-red-600">{fieldErrors.amenityIds}</p>}
         </section>
 
         {isStaff && (
@@ -272,6 +277,7 @@ export function ProjectFormPage() {
               ))}
               {agents.length === 0 && <p className="text-sm text-text-muted">No agents yet.</p>}
             </div>
+            {fieldErrors.agentIds && <p className="text-xs text-red-600">{fieldErrors.agentIds}</p>}
             <label className="flex items-center gap-2 text-sm text-text-primary">
               <input type="checkbox" checked={form.isFeatured} onChange={(e) => setForm((f) => ({ ...f, isFeatured: e.target.checked }))} />
               Featured on homepage
@@ -282,10 +288,10 @@ export function ProjectFormPage() {
         <section className="space-y-4 rounded-lg border border-border bg-white p-6">
           <h2 className="text-sm font-semibold text-text-primary">SEO &amp; Publishing</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="SEO Title" htmlFor="metaTitle">
+            <FormField label="SEO Title" htmlFor="metaTitle" error={fieldErrors.metaTitle}>
               <TextInput id="metaTitle" value={form.metaTitle} onChange={(e) => setForm((f) => ({ ...f, metaTitle: e.target.value }))} />
             </FormField>
-            <FormField label="SEO Description" htmlFor="metaDescription">
+            <FormField label="SEO Description" htmlFor="metaDescription" error={fieldErrors.metaDescription}>
               <TextInput id="metaDescription" value={form.metaDescription} onChange={(e) => setForm((f) => ({ ...f, metaDescription: e.target.value }))} />
             </FormField>
           </div>
