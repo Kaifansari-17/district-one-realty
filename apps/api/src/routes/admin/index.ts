@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { broadcastOnMutation } from "@/middlewares/broadcastOnMutation";
 import { lookupsAdminRoutes } from "@/routes/admin/lookups.routes";
 import { locationAdminRoutes } from "@/routes/admin/location.routes";
 import { builderAdminRoutes } from "@/routes/admin/builder.routes";
@@ -13,6 +14,8 @@ import { dashboardAdminRoutes } from "@/routes/admin/dashboard.routes";
 import { activityLogAdminRoutes } from "@/routes/admin/activityLog.routes";
 
 const router = Router();
+
+router.use(broadcastOnMutation);
 
 router.use("/dashboard", dashboardAdminRoutes);
 router.use("/properties", propertyAdminRoutes);

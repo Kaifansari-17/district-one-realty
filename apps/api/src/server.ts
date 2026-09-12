@@ -1,6 +1,7 @@
 import { createApp } from "@/app";
 import { env } from "@/config/env";
 import { connectDatabase, disconnectDatabase } from "@/config/prisma";
+import { initAdminRealtime } from "@/realtime/adminSocket";
 import { logger } from "@/utils/logger";
 
 async function bootstrap() {
@@ -11,6 +12,8 @@ async function bootstrap() {
   const server = app.listen(env.PORT, () => {
     logger.info(`District One Realty API listening on port ${env.PORT} [${env.NODE_ENV}]`);
   });
+
+  initAdminRealtime(server);
 
   const shutdown = (signal: string) => {
     logger.info(`${signal} received. Shutting down gracefully...`);

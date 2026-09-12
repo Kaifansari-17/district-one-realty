@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
+import { useRealtimeSync } from "@/lib/useRealtimeSync";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
 export function AdminLayout() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  useRealtimeSync();
 
   return (
     <div className="flex min-h-screen bg-grey-light">
