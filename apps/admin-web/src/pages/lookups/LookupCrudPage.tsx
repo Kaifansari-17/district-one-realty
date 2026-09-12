@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useCrudResource } from "@/lib/useCrudResource";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -76,8 +77,8 @@ export function LookupCrudPage({ title, singularLabel, basePath, resourceKey, fi
         toast.success(`${singularLabel} created`);
       }
       setFormOpen(false);
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     }
   }
 

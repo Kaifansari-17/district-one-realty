@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCrudResource } from "@/lib/useCrudResource";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { FormField, TextInput, TextArea } from "@/components/ui/FormField";
 import { MediaManager } from "@/components/ui/MediaManager";
@@ -63,8 +64,8 @@ export function BlogFormPage() {
         toast.success("Blog post created");
       }
       navigate("/blogs");
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     }
   }
 
@@ -81,7 +82,7 @@ export function BlogFormPage() {
         <FormField label="Excerpt" htmlFor="excerpt" hint="Shown on the blog listing card.">
           <TextArea id="excerpt" rows={2} value={form.excerpt} onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))} />
         </FormField>
-        <FormField label="Content" htmlFor="content" required>
+        <FormField label="Content" htmlFor="content" required hint="At least 20 characters.">
           <TextArea id="content" rows={14} required value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} />
         </FormField>
 

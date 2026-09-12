@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { isAxiosError } from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useCrudResource } from "@/lib/useCrudResource";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { FormField, TextInput, TextArea, Select } from "@/components/ui/FormField";
 import { MediaManager } from "@/components/ui/MediaManager";
@@ -234,11 +234,7 @@ export function PropertyFormPage() {
       }
       navigate("/properties");
     } catch (err) {
-      // A Zod validation failure's `errors.body` (e.g. "Expected number, received null") is far
-      // more actionable than the generic top-level "Validation failed" message alone.
-      const data = isAxiosError(err) ? err.response?.data : undefined;
-      const detail = data?.errors?.body?.[0] as string | undefined;
-      toast.error(detail ?? data?.message ?? "Something went wrong. Please check the form and try again.");
+      toast.error(getErrorMessage(err, "Something went wrong. Please check the form and try again."));
     }
   }
 

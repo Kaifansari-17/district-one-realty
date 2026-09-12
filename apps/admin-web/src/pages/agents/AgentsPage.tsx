@@ -4,6 +4,7 @@ import { Plus, Pencil, Power, KeyRound } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useCrudResource } from "@/lib/useCrudResource";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -90,8 +91,8 @@ export function AgentsPage() {
         setFormOpen(false);
         if (result.temporaryPassword) setGeneratedPassword(result.temporaryPassword);
       }
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     }
   }
 
