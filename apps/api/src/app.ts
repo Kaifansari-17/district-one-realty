@@ -1,4 +1,3 @@
-import path from "node:path";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -7,7 +6,7 @@ import compression from "compression";
 import hpp from "hpp";
 import morgan from "morgan";
 import pinoHttp from "pino-http";
-import { isAllowedOrigin, isDevelopment, useLocalMediaStorage } from "@/config/env";
+import { isAllowedOrigin, isDevelopment, uploadsDir, useLocalMediaStorage } from "@/config/env";
 import { logger } from "@/utils/logger";
 import { apiLimiter } from "@/middlewares/rateLimiters";
 import { apiRouter } from "@/routes";
@@ -54,7 +53,7 @@ export function createApp() {
   // Only mounted when Cloudinary isn't configured — see services/storage/. Cloudinary-hosted
   // files never touch this server, so there's nothing to serve when it's actually in use.
   if (useLocalMediaStorage) {
-    app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+    app.use("/uploads", express.static(uploadsDir));
   }
 
   // Sitemap data is dynamic (published properties/projects/etc.), so it's generated here rather

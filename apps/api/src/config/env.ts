@@ -1,4 +1,5 @@
 import "dotenv/config";
+import path from "node:path";
 import { z } from "zod";
 
 const envSchema = z.object({
@@ -28,6 +29,13 @@ const envSchema = z.object({
   // media storage fallback (see services/storage/). Irrelevant when Cloudinary is configured,
   // since Cloudinary returns its own absolute URLs.
   API_PUBLIC_URL: z.string().url().optional(),
+
+  // Absolute path for the local-disk media storage fallback. Defaults to `<cwd>/uploads` for
+  // local dev, but MUST be set to a path outside the app's own deploy directory in any hosting
+  // setup that replaces that directory wholesale on every deploy (e.g. Hostinger's versioned
+  // Web App builds) — otherwise every previously uploaded file is silently orphaned the next
+  // time the app redeploys.
+  UPLOADS_DIR: z.string().optional(),
 
   MAPS_API_KEY: z.string().optional().default(""),
 
@@ -87,3 +95,6 @@ export function isAllowedOrigin(origin: string): boolean {
 export const useLocalMediaStorage = !(env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET);
 
 export const apiPublicUrl = env.API_PUBLIC_URL ?? (isDevelopment ? `http://localhost:${env.PORT}` : "");
+
+/** Absolute uploads root for the local-disk media storage fallback — see the UPLOADS_DIR comment above. */
+export const uploadsDir = env.UPLOADS_DIR ?? path.join(process.cwd(), "uploads");

@@ -1,10 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
-import { apiPublicUrl } from "@/config/env";
+import { apiPublicUrl, uploadsDir } from "@/config/env";
 import type { MediaStorageProvider } from "@/services/storage/types";
 
-const UPLOADS_ROOT = path.join(process.cwd(), "uploads");
+const UPLOADS_ROOT = uploadsDir;
 
 const EXTENSION_BY_MIME: Record<string, string> = {
   "image/jpeg": ".jpg",
