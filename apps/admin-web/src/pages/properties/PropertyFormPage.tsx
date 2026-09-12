@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isAxiosError } from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
@@ -177,7 +178,14 @@ export function PropertyFormPage() {
   }
 
   function numberOrUndefined(value: string): number | undefined {
-    return value === "" ? undefined : Number(value);
+    // A native number input's value should only ever be "" or a valid numeric string, but some
+    // browsers report "" via validity.badInput for an intermediate invalid state that isn't
+    // reliably empty — guard with Number.isFinite so that can never silently become `NaN`,
+    // which JSON.stringify serializes as `null` and the API correctly (but confusingly) rejects
+    // as "expected number, received null" for what is meant to be an empty/omitted field.
+    if (value === "") return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -225,8 +233,12 @@ export function PropertyFormPage() {
         toast.success("Property created");
       }
       navigate("/properties");
-    } catch {
-      toast.error("Something went wrong. Please check the form and try again.");
+    } catch (err) {
+      // A Zod validation failure's `errors.body` (e.g. "Expected number, received null") is far
+      // more actionable than the generic top-level "Validation failed" message alone.
+      const data = isAxiosError(err) ? err.response?.data : undefined;
+      const detail = data?.errors?.body?.[0] as string | undefined;
+      toast.error(detail ?? data?.message ?? "Something went wrong. Please check the form and try again.");
     }
   }
 
