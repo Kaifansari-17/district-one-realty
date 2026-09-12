@@ -286,7 +286,11 @@ model Project {
   launchDate      DateTime?
   possessionDate  DateTime?
   startingPrice   Decimal?       @db.Decimal(14, 2)
-  configurations  Json?
+  // Stored as a JSON-encoded string (not the native Json type) — real MySQL's native JSON
+  // column uses a proprietary binary wire format that the mariadb driver adapter (see
+  // config/prisma.ts) cannot decode, a known upstream limitation (prisma/prisma#28143,
+  // #28168). Serialized/parsed manually in project.service.ts.
+  configurations  String?        @db.LongText
   totalTowers     Int?
   totalFloors     Int?
   totalUnits      Int?
@@ -614,7 +618,9 @@ model ActivityLog {
   action    String
   entity    String
   entityId  String?
-  metadata  Json?
+  // See the comment on Project.configurations — same real-MySQL/mariadb-adapter JSON
+  // limitation. Serialized/parsed manually in activityLog.service.ts.
+  metadata  String?  @db.LongText
   createdAt DateTime @default(now())
 
   @@index([userId])
@@ -664,6 +670,8 @@ model Media {
 model Setting {
   id        String   @id @default(cuid())
   key       String   @unique
-  value     Json?
+  // See the comment on Project.configurations — same real-MySQL/mariadb-adapter JSON
+  // limitation. Not read/written anywhere yet, but kept consistent for whenever it is.
+  value     String?  @db.LongText
   updatedAt DateTime @updatedAt
 }

@@ -5,6 +5,7 @@ import { catchAsync } from "@/utils/catchAsync";
 import { sendSuccess } from "@/utils/ApiResponse";
 import { prisma } from "@/config/prisma";
 import { buildPaginationMeta, parsePagination } from "@/utils/pagination";
+import { fromJsonColumn } from "@/utils/jsonColumn";
 
 const router = Router();
 // Full activity history is a Super Admin/Admin concern, not agent-scoped.
@@ -29,7 +30,12 @@ router.get(
       prisma.activityLog.count({ where }),
     ]);
 
-    return sendSuccess(res, { items, pagination: buildPaginationMeta(page, limit, total) });
+    const parsedItems = items.map((item) => ({
+      ...item,
+      metadata: fromJsonColumn<Record<string, unknown>>(item.metadata),
+    }));
+
+    return sendSuccess(res, { items: parsedItems, pagination: buildPaginationMeta(page, limit, total) });
   })
 );
 

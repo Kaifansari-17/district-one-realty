@@ -5,7 +5,15 @@ import { generateUniqueSlug } from "@/utils/generateUniqueSlug";
 import { buildPaginationMeta, parsePagination } from "@/utils/pagination";
 import { getPrimaryImagesForOwners, listMedia } from "@/services/media.service";
 import { assertCanAccessProject, isStaff } from "@/utils/ownership";
+import { fromJsonColumn, toJsonColumn } from "@/utils/jsonColumn";
 import type { AuthenticatedUser } from "@/types/express";
+
+/** configurations is stored as a JSON-encoded string — see schema.prisma. */
+function withParsedConfigurations<T extends { configurations: string | null }>(
+  project: T
+): Omit<T, "configurations"> & { configurations: string[] | null } {
+  return { ...project, configurations: fromJsonColumn<string[]>(project.configurations) };
+}
 
 const PUBLIC_INCLUDE = { builder: true, location: { include: { city: true } } } satisfies Prisma.ProjectInclude;
 
@@ -23,7 +31,7 @@ export async function listPublicProjects(query: { location?: string; builder?: s
   ]);
 
   const imageMap = await getPrimaryImagesForOwners("PROJECT_GALLERY", projects.map((p) => p.id));
-  const items = projects.map((p) => ({ ...p, primaryImage: imageMap.get(p.id) ?? null }));
+  const items = projects.map((p) => withParsedConfigurations({ ...p, primaryImage: imageMap.get(p.id) ?? null }));
 
   return { items, pagination: buildPaginationMeta(page, limit, total) };
 }
@@ -46,7 +54,7 @@ export async function listPublicProjectsGroupedByLocation() {
       const imageMap = await getPrimaryImagesForOwners("PROJECT_GALLERY", projects.map((p) => p.id));
       return {
         location: { id: location.id, name: location.name, slug: location.slug },
-        projects: projects.map((p) => ({ ...p, primaryImage: imageMap.get(p.id) ?? null })),
+        projects: projects.map((p) => withParsedConfigurations({ ...p, primaryImage: imageMap.get(p.id) ?? null })),
       };
     })
   );
@@ -75,14 +83,14 @@ export async function getProjectBySlug(slug: string) {
 
   const unitImageMap = await getPrimaryImagesForOwners("PROPERTY_IMAGE", availableUnits.map((u) => u.id));
 
-  return {
+  return withParsedConfigurations({
     ...project,
     amenities: project.amenities.map((a) => a.amenity),
     gallery,
     brochure: brochure[0] ?? null,
     masterPlan: masterPlan[0] ?? null,
     availableUnits: availableUnits.map((u) => ({ ...u, primaryImage: unitImageMap.get(u.id) ?? null })),
-  };
+  });
 }
 
 export async function listAdminProjects(query: Record<string, unknown>, user: AuthenticatedUser) {
@@ -107,7 +115,7 @@ export async function listAdminProjects(query: Record<string, unknown>, user: Au
     prisma.project.count({ where }),
   ]);
 
-  return { items: projects, pagination: buildPaginationMeta(page, limit, total) };
+  return { items: projects.map(withParsedConfigurations), pagination: buildPaginationMeta(page, limit, total) };
 }
 
 export async function getAdminProjectById(id: string, user: AuthenticatedUser) {
@@ -131,13 +139,13 @@ export async function getAdminProjectById(id: string, user: AuthenticatedUser) {
     listMedia("PROJECT_MASTER_PLAN", project.id),
   ]);
 
-  return {
+  return withParsedConfigurations({
     ...project,
     amenities: project.amenities.map((a) => a.amenity),
     gallery,
     brochure: brochure[0] ?? null,
     masterPlan: masterPlan[0] ?? null,
-  };
+  });
 }
 
 interface ProjectInput {
@@ -188,17 +196,18 @@ export async function createProject(data: ProjectInput): Promise<{ id: string }>
 
   const { rest, amenityIds, agentIds } = extractRelationInput(data);
 
-  return prisma.project.create({
+  const project = await prisma.project.create({
     data: {
       ...rest,
       slug,
-      configurations: rest.configurations as Prisma.InputJsonValue | undefined,
+      configurations: toJsonColumn(rest.configurations),
       launchDate: rest.launchDate ? new Date(rest.launchDate) : undefined,
       possessionDate: rest.possessionDate ? new Date(rest.possessionDate) : undefined,
       amenities: amenityIds ? { create: amenityIds.map((amenityId) => ({ amenityId })) } : undefined,
       agents: agentIds ? { create: agentIds.map((agentId) => ({ agentId })) } : undefined,
     } as Prisma.ProjectUncheckedCreateInput,
   });
+  return withParsedConfigurations(project);
 }
 
 export async function updateProject(id: string, data: Partial<ProjectInput>, user: AuthenticatedUser) {
@@ -225,30 +234,33 @@ export async function updateProject(id: string, data: Partial<ProjectInput>, use
     });
   }
 
-  return prisma.project.update({
+  const project = await prisma.project.update({
     where: { id },
     data: {
       ...rest,
       ...(slug ? { slug } : {}),
-      configurations: rest.configurations as Prisma.InputJsonValue | undefined,
+      configurations: toJsonColumn(rest.configurations),
       launchDate: rest.launchDate ? new Date(rest.launchDate) : undefined,
       possessionDate: rest.possessionDate ? new Date(rest.possessionDate) : undefined,
       amenities: amenityIds ? { create: amenityIds.map((amenityId) => ({ amenityId })) } : undefined,
       agents: agentIds ? { create: agentIds.map((agentId) => ({ agentId })) } : undefined,
     } as Prisma.ProjectUncheckedUpdateInput,
   });
+  return withParsedConfigurations(project);
 }
 
 async function setPublished(id: string, user: AuthenticatedUser, isPublished: boolean) {
   await assertCanAccessProject(user, id);
-  return prisma.project.update({ where: { id }, data: { isPublished } });
+  const project = await prisma.project.update({ where: { id }, data: { isPublished } });
+  return withParsedConfigurations(project);
 }
 
 export const publishProject = (id: string, user: AuthenticatedUser) => setPublished(id, user, true);
 export const unpublishProject = (id: string, user: AuthenticatedUser) => setPublished(id, user, false);
 
 export async function setProjectFeatured(id: string, isFeatured: boolean) {
-  return prisma.project.update({ where: { id }, data: { isFeatured } });
+  const project = await prisma.project.update({ where: { id }, data: { isFeatured } });
+  return withParsedConfigurations(project);
 }
 
 /** Admin/Super Admin only. */
