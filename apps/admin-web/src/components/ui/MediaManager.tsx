@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { isAxiosError } from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Star, Trash2, Upload, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import type { MediaAsset } from "@district-one/shared-types";
@@ -44,7 +45,15 @@ export function MediaManager({ basePath, label = "Images", accept = "image/jpeg,
       invalidate();
       toast.success("Removed");
     },
-    onError: () => toast.error("Failed to remove"),
+    onError: (error: unknown) => {
+      // A 404 here means the item was already deleted (e.g. a duplicate click before the
+      // button's disabled state took effect) — the end state the user wanted is already true.
+      if (isAxiosError(error) && error.response?.status === 404) {
+        invalidate();
+        return;
+      }
+      toast.error("Failed to remove");
+    },
   });
 
   const primaryMutation = useMutation({
@@ -140,8 +149,9 @@ export function MediaManager({ basePath, label = "Images", accept = "image/jpeg,
                 <button
                   type="button"
                   title="Delete"
+                  disabled={deleteMutation.isPending}
                   onClick={() => deleteMutation.mutate(item.id)}
-                  className="rounded p-1 text-white hover:bg-red-500/80"
+                  className="rounded p-1 text-white hover:bg-red-500/80 disabled:opacity-50"
                 >
                   <Trash2 size={12} />
                 </button>
