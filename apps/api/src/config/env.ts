@@ -61,16 +61,25 @@ export const allowedOrigins = [
 
 const LOCALHOST_ORIGIN_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
 
+/** Strips a leading "www." so https://example.com and https://www.example.com compare equal. */
+function stripWww(origin: string): string {
+  return origin.replace(/^(https?:\/\/)www\./, "$1");
+}
+
+const allowedOriginsNoWww = allowedOrigins.map(stripWww);
+
 /**
  * Vite auto-increments its dev port (5173 -> 5174 -> ...) whenever the preferred one is already
  * taken by another running dev server — a single hardcoded DEV_PUBLIC_WEB_URL/DEV_ADMIN_WEB_URL
  * breaks the moment that happens, and the failure mode (CORS silently drops the response) looks
  * from the frontend like "no data" rather than a network error. In development only, accept any
  * localhost/127.0.0.1 origin regardless of port; production still only ever matches the exact
- * configured PUBLIC_WEB_URL/ADMIN_WEB_URL.
+ * configured PUBLIC_WEB_URL/ADMIN_WEB_URL (www and non-www variants both accepted, since the site
+ * is currently reachable at both without a canonical redirect between them).
  */
 export function isAllowedOrigin(origin: string): boolean {
   if (allowedOrigins.includes(origin)) return true;
+  if (allowedOriginsNoWww.includes(stripWww(origin))) return true;
   return isDevelopment && LOCALHOST_ORIGIN_PATTERN.test(origin);
 }
 
