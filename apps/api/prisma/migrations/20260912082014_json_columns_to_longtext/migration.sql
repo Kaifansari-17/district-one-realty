@@ -1,8 +1,8 @@
 -- AlterTable
-ALTER TABLE `activitylog` MODIFY `metadata` LONGTEXT NULL;
+ALTER TABLE `ActivityLog` MODIFY `metadata` LONGTEXT NULL;
 
 -- AlterTable
-ALTER TABLE `project` MODIFY `configurations` LONGTEXT NULL;
+ALTER TABLE `Project` MODIFY `configurations` LONGTEXT NULL;
 
 -- AlterTable
-ALTER TABLE `setting` MODIFY `value` LONGTEXT NULL;
+ALTER TABLE `Setting` MODIFY `value` LONGTEXT NULL;
